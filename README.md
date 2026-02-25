@@ -9,6 +9,10 @@ This project explores real-time visual perception for robotics using webcam inpu
 - raw measurement
 - filtered estimate
 - motion prediction
+- Interactive color calibration via mouse click
+  - Click on an object in the tracking window
+  - HSV range is automatically generated
+  - Eliminates manual slider tuning
 
 ### Visualization
 - Red → raw measurement

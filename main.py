@@ -1,8 +1,42 @@
 import cv2
 import numpy as np
 
+lower_hsv = None
+upper_hsv = None
+hsv_frame = None
+
 def nothing(_):
     pass
+
+def pick_color(event, x, y, flags, param):
+    global lower_hsv, upper_hsv, hsv_frame
+
+    if event == cv2.EVENT_LBUTTONDOWN:
+        print("CLICK:", x, y, "hsv_frame is None?", hsv_frame is None)
+
+        if hsv_frame is None:
+            return
+
+        h, s, v = hsv_frame[y, x]
+
+        h_tol = 10
+        s_tol = 60
+        v_tol = 60
+
+        lower_hsv = np.array([
+            max(0, h - h_tol),
+            max(0, s - s_tol),
+            max(0, v - v_tol)
+        ])
+
+        upper_hsv = np.array([
+            min(179, h + h_tol),
+            min(255, s + s_tol),
+            min(255, v + v_tol)
+        ])
+        print("Lower HSV:", lower_hsv, "Upper HSV:", upper_hsv)
+
+        print("Selected HSV:", (h, s, v))
 
 def create_hsv_trackbars():
     cv2.namedWindow("HSV Trackbars")
@@ -69,10 +103,13 @@ def main():
     if not cap.isOpened():
         raise RuntimeError("Could not open webcam (VideoCapture(0)).")
 
-    create_hsv_trackbars()
+    # create_hsv_trackbars()
 
     kf = build_kalman()
     initialized = False
+
+    cv2.namedWindow("Tracking")
+    cv2.setMouseCallback("Tracking", pick_color)
 
     while True:
         ret, frame = cap.read()
@@ -82,7 +119,25 @@ def main():
         frame = cv2.flip(frame, 1)  # mirror for easier interaction
         hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
 
-        lower, upper = get_hsv_ranges()
+        global hsv_frame
+        hsv_frame = hsv
+
+        if lower_hsv is None:
+            # Show empty mask until user clicks a color
+            empty_mask = np.zeros((frame.shape[0], frame.shape[1]), dtype=np.uint8)
+            cv2.putText(frame, "Click the object to pick HSV range",
+                        (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
+
+            cv2.imshow("Tracking", frame)
+            cv2.imshow("Mask", empty_mask)
+
+            key = cv2.waitKey(1) & 0xFF
+            if key == 27 or key == ord('q'):
+                break
+            continue
+
+        lower = lower_hsv
+        upper = upper_hsv
         lower = np.array(lower, dtype=np.uint8)
         upper = np.array(upper, dtype=np.uint8)
 
